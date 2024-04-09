@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tektonhomework-ingress
+  namespace: ubercloud
+spec:
+  rules:
+  - host: ""
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: tektonhomework-service
+            port:
+              number: 8090
