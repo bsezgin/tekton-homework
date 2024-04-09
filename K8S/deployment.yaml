@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: tektonhomework-deployment
+  name: tektonhomework-pod
   namespace: ubercloud
 spec:
   replicas: 1
