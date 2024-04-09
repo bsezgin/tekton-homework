@@ -9,5 +9,5 @@ spec:
     app: tektonhomework-pod
   ports:
     - protocol: TCP
-      port: 8090
+      port: 8080
       targetPort: 8080
