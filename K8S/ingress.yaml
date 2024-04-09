@@ -14,4 +14,4 @@ spec:
           service:
             name: tektonhomework-service
             port:
-              number: 8090
+              number: 8080
