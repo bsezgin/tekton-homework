@@ -1,0 +1,69 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: clone-build-push
+spec:
+  description: |
+    This pipeline clones a git repo, builds a Docker image with Kaniko and
+    pushes it to a registry    
+  params:
+  - name: repo-url
+    type: string
+  - name: image-reference
+    type: string
+  workspaces:
+  - name: shared-data
+  - name: docker-credentials
+  tasks:
+  - name: fetch-source
+    taskRef:
+      name: git-clone
+    workspaces:
+    - name: output
+      workspace: shared-data
+    params:
+    - name: url
+      value: $(params.repo-url)
+  - name: get-commit-hash
+    runAfter: ["fetch-source"]
+    taskRef:
+      name: get-commit-hash
+    workspaces:
+    - name: source
+      workspace: shared-data
+  - name: build-push
+    runAfter: ["fetch-source"]
+    taskRef:
+      name: kaniko
+    workspaces:
+    - name: source
+      workspace: shared-data
+    - name: dockerconfig
+      workspace: docker-credentials
+    params:
+    - name: IMAGE
+      value: $(params.image-reference):$(tasks.get-commit-hash.results.SHA)
+  - name: trivy
+    runAfter: ["build-push"]
+    taskRef:
+        name: trivy
+    params:
+    - name: imageName
+      value: bsezgin/tektonhomework:$(tasks.get-commit-hash.results.SHA)
+  - name: deploy
+    runAfter: ["trivy"]
+    taskRef:
+      name: kubernetes-actions
+    params:
+      - name: "script"
+        value: |
+          DEPLOYMENT_NAME="tektonhomework-pod"
+          NAMESPACE="ubercloud"
+          if kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE; then
+            echo "Deployment $DEPLOYMENT_NAME already exists."
+          else
+            echo "Deployment $DEPLOYMENT_NAME does not exist. Creating..."
+          kubectl create deployment $DEPLOYMENT_NAME --image=$(params.image-reference) -n $NAMESPACE
+          fi
+          kubectl set image -n ubercloud deployment/$DEPLOYMENT_NAME app=$(params.image-reference) --record
+          kubectl rollout status -n ubercloud deployment/$DEPLOYMENT_NAME --timeout 5m

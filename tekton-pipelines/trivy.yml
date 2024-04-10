@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: trivy
+spec:
+  params:
+  - name: imageName
+    type: string
+  steps:
+  - name: scan
+    image: aquasec/trivy:latest
+    script: |
+      SCAN_RESULT=$(trivy image --severity CRITICAL --exit-code 1 --quiet $(params.imageName))
+      if [ $? -ne 0 ]; then
+        echo "Critical vulnerability found!"
+        exit 1
+      fi

@@ -1,0 +1,27 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: get-commit-hash
+spec:
+  workspaces:
+  - name: source
+  params:
+  - name: subdirectory
+    type: string
+    default: ""
+  results:
+  - name: SHA
+    description: The SHA of the latest commit
+  steps:
+  - name: change-ownership
+    image: alpine
+    script: |
+      #!/bin/sh
+      chown -R root:root $(workspaces.source.path)/$(params.subdirectory)
+  - name: get-commit-hash
+    image: alpine/git
+    script: |
+      #!/bin/sh
+      cd $(workspaces.source.path)/$(params.subdirectory)
+      COMMIT_HASH=$(git rev-parse HEAD)
+      echo -n $COMMIT_HASH > $(results.SHA.path)

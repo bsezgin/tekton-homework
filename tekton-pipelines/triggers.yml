@@ -1,0 +1,75 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: github-listener-interceptor
+spec:
+  serviceAccountName: admin-service-account
+  triggers:
+    - name: github-listener
+      interceptors:
+        - github:
+#|            secretRef:
+#              secretName: webhook-secret
+#              secretKey: secretToken
+            eventTypes:
+              - pull_request
+              - push
+      bindings:
+        - ref: pipeline-binding
+      template:
+        ref: pipeline-template
+
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: pipeline-binding
+spec:
+  params:
+    - name: repo-url
+      value: https://github.com/bsezgin/tekton-homework.git
+    - name: image-reference
+      value: docker.io/bsezgin/tektonhomework
+
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: pipeline-template
+spec:
+  params:
+    - name: repo-url
+      description: The git repository url
+      default: https://github.com/bsezgin/tekton-homework.git
+    - name: image-reference
+      description: The Docker image reference
+      default: docker.io/bsezgin/tektonhomework
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: clone-build-push-run-
+      spec:
+        serviceAccountName: admin-service-account
+        pipelineRef:
+          name: clone-build-push
+        podTemplate:
+          securityContext:
+            fsGroup: 65532
+        workspaces:
+        - name: shared-data
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+              - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 1Gi
+        - name: docker-credentials
+          secret:
+            secretName: docker-credentials
+        params:
+        - name: repo-url
+          value: $(tt.params.repo-url)
+        - name: image-reference
+          value: $(tt.params.image-reference)
