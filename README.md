@@ -137,7 +137,7 @@ The Pipeline consists of 5 steps:
 
 We need to create the tasks for these steps:
 
-**Git-Clone Task**
+**Git-Clone Task**  
 I've used the default git task that can be found on tekton hub : https://hub.tekton.dev/tekton/task/git-clone  
 To install the task use the following command: 
 
@@ -186,29 +186,25 @@ Pipeline YAML has these features:
 **Main Parameters:**  
 -Git Repo URL  
 -Image reference for the Docker Image  
-Main Volumes  
+**Main Volumes:** 
 -Volume for Git Repo  
 -Kubernetes Secret for Docker Registry  
 Note: I didn't create a git hub credentials since i've used a public repo for the project.
 
 **Tasks**
-- 1. **Git Clone task:**
+1. **Git Clone task:**
 This task has one workspace called output and it is using the volume shared-data. Purpose of this task is cloning the git repo that specified in the PipelineRun. 
-- 2. **Get git commit hash Task:**
+2. **Get git commit hash Task:**
 This task is using the one workspace has source and it is using the volume shared-data.
 Purpose of this task is getting the commit has from the git push to label the docker image with that specific push. It is exposing this information with an output variable called SHA. It has been set to run after the git clone task with runAfter condition.
-Please find the Trivy task YAML file in the following link:
-
-            https://github.com/bsezgin/tekton-homework/tree/main/tekton-pipelines/git-commit-hash-task.yml
-- 3. **Kaniko Task:**
+Please find the Trivy task YAML file in the following link: https://github.com/bsezgin/tekton-homework/tree/main/tekton-pipelines/git-commit-hash-task.yml
+3. **Kaniko Task:**
 Kaniko is building the docker image without using Docker Engine.This task is using two workspace source and docker credentials. Source is the volume to pull the docker image and the docker-credentials is a kubernetes secret to push the image that build by kaniko task.It has been set to run after the git commit hash task with runAfter condition.
-- 4. **Trivy Task**
+4. **Trivy Task**
 Trivy is a free Container image scanner task created by AquaSec.This task is using only the docker image tag information to scan the docker image. It has a special condition that if a vulnerability has been found in the image it is stopping the pipeline to avoid the deploy the image that has the vulnerabilities to the kubernetes.It has been set to run after the kaniko task with runAfter condition.
 **I need to add additional note there, since a pipeline that has build code and docker images needs to be assesed with DevSecOps tools such trivy that we used for this workshop.  For the code build we can use some static code analyzers such as SonarQube. This can create safer builds.**
-Please find the Trivy task YAML file in the following link:
-
-            https://github.com/bsezgin/tekton-homework/tree/main/tekton-pipelines/trivy.yml
-- 5. **Kubernetes Deploy**
+Please find the Trivy task YAML file in the following link: https://github.com/bsezgin/tekton-homework/tree/main/tekton-pipelines/trivy.yml
+5. **Kubernetes Deploy**
 This  task is deploying the build and scanned Docker image to the kubernetes as Deployment with using kubectl.
 I've also created the K8S manifest files(Loas Balancer Service Manifest, Nodeport Service Manifest and Ingress Manifest files that can be found on https://github.com/bsezgin/tekton-homework/tree/main/K8S) to expose the application to the internet.
 
@@ -218,38 +214,27 @@ The whole pipeline.yml file has been found on the https://github.com/bsezgin/tek
 
 This was the most complex part of the project. First we need to create the Event Listener, Trigger Binding and Triggers YAML files.  I've used the default namespace instead of to create a namespace for the Tekton Triggers in kubernetes.  Also, I've created a service account which has a ClusterRole and a Cluster Role Binding to modify the  Kubernetes resources such as Deployment, CRD etc in all namespaces.
 
-- 1. Event Listener:
-Event Listener is created for listening the Github push events. I've used the service account that I've created earlier for the Event Listener.  
+1. Event Listener: Event Listener is created for listening the Github push events. I've used the service account that I've created earlier for the Event Listener.  
 
-- 2. Trigger Binding:
-
-Trigger Binding is used to specify the fields in the event payload from which you want to extract data and the fields in the corresponding TriggerTemplate to populate with the extracted values.  
+2. Trigger Binding:  Trigger Binding is used to specify the fields in the event payload from which you want to extract data and the fields in the corresponding TriggerTemplate to populate with the extracted values.  
 I've used two paramaters for trigger binding:
 
 - Git Repo URL : This paramater is pointing to my git repo **https://github.com/bsezgin/tekton-homework.git** since we need this info to extract the payload from the github webhook.
-- Docker Image Name : This parameters is pointing my Docker image in my Docker Repository.
+- Docker Image Name : This parameters is pointing my Docker image in my Docker Repository. 
+        https://hub.docker.com/repository/docker/bsezgin/tektonhomework/general
 
-- 3. Trigger Template:
-
-Specifies a blueprint for the resource, such as PipelineRun, that you want to instantiate and/or execute when your EventListener detects an event.
-
-I've added a Pipeline Run to the trigger template since I'm using a pipeline and I want to automate it on each push.
-Also I've used the same service account that i've used in Event Listener for the PipelineRun.
-
-Please find the trigger related resources YAML file in the following link:
-
-            https://github.com/bsezgin/tekton-homework/tree/main/tekton-pipelines/triggers.yml
+3. Trigger Template:  Specifies a blueprint for the resource, such as PipelineRun, that you want to instantiate and/or execute when your EventListener detects an event.  I've added a Pipeline Run to the trigger template since I'm using a pipeline and I want to automate it on each push.  Also I've used the same service account that i've used in Event Listener for the PipelineRun.  Please find the trigger related resources YAML file in the following link: https://github.com/bsezgin/tekton-homework/tree/main/tekton-pipelines/triggers.yml
 
 
 Pipeline Run has these features:
 
-**Parameters**
+**Parameters:**
 It is using two parameters: 
 
 - Git Repo URL : This paramater is pointing to my git repo **https://github.com/bsezgin/tekton-homework.git** since we need this info to extrcct the payload from the github webhook.
-- Docker Image Name : This parameters is pointing my Docker image in my Docker Repository.
+- Docker Image Name : This parameters is pointing my Docker image in my Docker Repository. https://hub.docker.com/repository/docker/bsezgin/tektonhomework/general
 
-**Workspace**
+**Workspace:**
 It is creating two workspaces as I've discussed in the pipeline YAML.  
 1. A volume with ReadWriteOnce access mode with non-root user.
 2. Docker Credentials which is kubernetes secret that has been set for the kubernetes cluster to be able to access to the Docker Registry.
@@ -276,8 +261,8 @@ Before creating webhook, we need create a connection between github and the mini
     ```
     This will create a random URL for your local workstation like **https://a751-31-223-75-241.ngrok-free.app**
 
-    We are going to using it in github webhook.  
-    ![Webhook Image](./images/webhook.png)
+    We are going to using it in github webhook as Payload URL.    
+    ![Webhook Image](./images/webhook.png)  
 
 Now, do a push to the github and trigger will automatically handle the event and will run the pipeline.
 
@@ -292,6 +277,6 @@ Installing Tekton Pipelines and it related resources was very easy but configuri
 - Problem 2: Architecture of Tekton pipelines. I got confused by the Pipeline, PipelineRun, Task and Task Run
 - Problem 3: Creating a docker secret in kubernetes :) I've created it with using kubectl but somehow Minikube has malformed it and i've found the problem with 3 hours of googling it.
 
-2. **Lastwords**
+2. **Last Words**
 
 I've learned a lot about Cloud Native Tekton pipelines and automate it in cloud native environment. The workshop has some chalenges and problems but overall it was very fun to complete it.
