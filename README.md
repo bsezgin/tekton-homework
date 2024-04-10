@@ -152,7 +152,7 @@ To install the task use the following command:
 
 **Kubernetes Deploy Task**
 
-I've used the default kaniko task that can be found on tekton hub : https://hub.tekton.dev/tekton/task/kubernetes-actions  
+I've used the default kubernetes task that can be found on tekton hub : https://hub.tekton.dev/tekton/task/kubernetes-actions  
 To install the task use the following command:
 
     tkn hub install task kubernetes-actions
